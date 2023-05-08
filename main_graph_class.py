@@ -15,7 +15,7 @@ import data_loader_basic
 import data_loader_lemma
 import data_loader_clause
 
-set_mm_path = 'C:/Users/Public/Documents/metamath/set.mm'
+set_mm_path = 'set.mm'
 device_laptop = tr.device("cuda" if tr.cuda.is_available() else "cpu")
 
 
@@ -48,20 +48,10 @@ class SimpleGNN(tr.nn.Module):
         return x
 
 
-def train_and_test():
+def train_and_test(total_epoch):
+    list_results = []
+
     dataset = get_data_loader()
-
-    train_dataset = dataset[:int(len(dataset) * 0.8)]
-    test_dataset = dataset[int(len(dataset) * 0.8):]
-
-    dataloader = DataLoader(train_dataset, 1, shuffle=True)
-    testdataloader = DataLoader(test_dataset, 1, shuffle=False)
-
-    input_dim = dataloader.dataset[0].num_node_features
-    hidden_dim = 4
-    model = SimpleGNN(input_dim, hidden_dim, 2)
-    criterion = tr.nn.CrossEntropyLoss()
-    optimizer = tr.optim.Adam(model.parameters(), lr=0.0001)
 
     def train(dataloader):
         model.train()
@@ -86,113 +76,35 @@ def train_and_test():
             correct += int((pred == data.y).sum())  # Check against ground-truth labels.
         return correct / len(loader.dataset)  # Derive ratio of correct predictions.
 
-    for epoch in range(1, 101):
-        loss = train(dataloader)
-        train_acc = test(dataloader)
-        test_acc = test(testdataloader)
-        print(f'Epoch: {epoch:03d}, Train Acc: {train_acc:.4f}, Test Acc: {test_acc:.4f}')
+    for k in range(3):
+        import random
+        random.shuffle(dataset)
 
+        train_dataset = dataset[:int(len(dataset) * 0.8)]
+        test_dataset = dataset[int(len(dataset) * 0.8):]
 
-    correct = 0
-    for data in dataloader:  # Iterate in batches over the training/test dataset.
-        out = model(data.x, data.edge_index, data.batch)
-        pred = out.argmax(dim=1)  # Use the class with highest probability.
-        correct += int((pred == data.y).sum())  # Check against ground-truth labels.
-    print('acc: ' + str(correct / len(dataloader.dataset)))
+        dataloader = DataLoader(train_dataset, 1, shuffle=True)
+        testdataloader = DataLoader(test_dataset, 1, shuffle=False)
 
-   # model, train, losses, accs, test_accs = None
-    return (1, 2, 3, 4, 5)
+        input_dim = dataloader.dataset[0].num_node_features
+        hidden_dim = 4
+        model = SimpleGNN(input_dim, hidden_dim, 2)
+        criterion = tr.nn.CrossEntropyLoss()
+        optimizer = tr.optim.Adam(model.parameters(), lr=0.0005)
+        list_one = []
 
-def show_and_the_rest(model, train, losses, accs, test_accs):
-    if model is None:
-        return
+        for epoch in range(1, total_epoch + 1):
+            loss = train(dataloader)
+            train_acc = test(dataloader)
+            test_acc = test(testdataloader)
+            list_one.append((epoch, loss, train_acc, test_acc))
+            print(f'Epoch: {epoch:03d}, Loss: {loss:.4f} Train Acc: {train_acc:.4f}, Test Acc: {test_acc:.4f}')
 
-    # exponential moving averages
-    ema_decay = 0.
-    metrics = {"loss": losses, "acc": accs}
-    emas = {}
-    for name, metric in metrics.items():
-        emas[name] = [metric[0]]
-        for i in range(1, len(metric)):
-            emas[name].append(ema_decay * emas[name][-1] + (1 - ema_decay) * metric[i])
+        list_results.append(list_one)
 
-    pt.subplot(3, 1, 1)
-    pt.plot(emas['loss'])
-    pt.ylabel("Training loss")
-    pt.subplot(3, 1, 2)
-    pt.plot(emas['acc'])
-    pt.ylabel("Training accuracy")
-    pt.xlabel("Update")
-    pt.subplot(3, 1, 3)
-    pt.plot(test_accs, label="Unbalanced")
-    pt.ylabel("Testing accuracy")
-    pt.xlabel("Epoch")
-    pt.tight_layout()
-    pt.show()
-
-    num_samples = 3
-
-    for i, (prompt, output) in enumerate(train):
-
-        samples = []
-        for s in range(num_samples):
-
-            # initialize with prompt
-            seq_so_far = list(prompt)
-            seq_so_far += ["$="]  # tell it to start on the proof step
-            seq_so_far += output[:2]  # some little hint
-            for t in range(2, len(output)):
-
-                with tr.no_grad():
-
-                    # send example through model
-                    logits = model(seq_so_far)
-
-                    # sort probabilities for next prediction
-                    probs = tr.softmax(logits[-1], dim=0)
-                    sorted_probs, sorter = tr.sort(probs, descending=True)
-                    sorted_probs = sorted_probs.cpu().numpy()
-
-                    # extract top 95% of probability mass
-                    keep = (sorted_probs.cumsum() > 0.95).argmax() + 1
-                    probs = sorted_probs[:keep] / sorted_probs[:keep].sum()  # renormalize
-                    choices = model.embedder.get_tokens(sorter[:keep])
-
-                    # make first sample deterministic greedy, others random
-                    if s == 0:
-                        next_token = choices[0]
-                    else:
-                        next_token = np.random.choice(choices, p=probs)
-
-                    seq_so_far.append(next_token)
-
-            samples.append(seq_so_far)
-
-        print("INPUT:")
-        print(" ".join(prompt))
-        print("\nTARGET:")
-        print(" ".join(output))
-        print("\nCONCAT:")
-        print(" ".join(prompt + output))
-        print("\nSAMPLES:")
-        for sample in samples:
-            print(" ".join(sample[len(prompt):]))
-
-        input('\n...')
+    return list_results
 
 def get_data_loader():
     return data_loader_basic.get_data_loader(1, False)
     #return data_loader_basic.data_loader_clause()
     #return data_loader_basic.get_data_lemma()
-
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    model, train, losses, accs, test_accs = train_and_test()
-   # DataLoader = get_data_loader()
-
-    input("stucking for check ......")
-    sys.exit(0)
-
-    show_and_the_rest(model, train, losses, accs, test_accs)
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/

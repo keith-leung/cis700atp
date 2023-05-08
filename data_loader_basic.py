@@ -4,12 +4,12 @@ from utils import *
 from torch_geometric.data import Data, DataLoader
 
 def get_data_loader(batch_size:int, shuffle:bool):
-    thms = load_database(10000)
+    thms = load_database(1880)
 
     set_tokens = set([])
 
     for label, (assrt, essen, proof) in thms.items():
-        print((label, assrt, essen, proof))
+        #print((label, assrt, essen, proof))
         prompt = tokenize(assrt, essen)
         set_tokens = set_tokens.union(set(prompt))
         # skip axioms, they do not have proofs
@@ -24,7 +24,7 @@ def get_data_loader(batch_size:int, shuffle:bool):
     list_tokens = sorted(list(set_tokens), reverse=True)
 
     char_to_idx = {char: idx for idx, char in enumerate(list_tokens)}
-    print(char_to_idx)
+    #print(char_to_idx)
 
     graphs = []
     for label, (assrt, essen, proof) in thms.items():

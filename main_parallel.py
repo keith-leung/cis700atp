@@ -20,13 +20,12 @@ import main_node_class
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    result1 = main_graph_class.train_and_test(40)
+    ''' omit this 
+    result1 = main_graph_class.train_and_test(200)
 
     result11 = result1[0]
     result12 = result1[1]
     result13 = result1[2]
-
-    num_reps = 3
 
     train_loss = []
     train_accu = []
@@ -75,8 +74,11 @@ if __name__ == '__main__':
     pt.show()
 
     input('node classification results.....')
+    '''
 
-    result2 = main_node_class.train_and_test(50)
+    num_reps = 3
+
+    result2 = main_node_class.train_and_test(40)
     result21 = result2[0]
     result22 = result2[1]
     result23 = result2[2]
