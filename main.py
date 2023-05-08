@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
     input('node classification results.....')
 
-    result2 = main_node_class.train_and_test(50)
+    result2 = main_node_class.train_and_test(10)
     result21 = result2[0]
     result22 = result2[1]
     result23 = result2[2]
